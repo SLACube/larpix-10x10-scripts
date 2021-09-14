@@ -236,7 +236,7 @@ def enable_frontend(c, channels, csa_disable, ):
                 #    c.write_configuration(pair[0], 'load_config_defaults')
                 #    c[pair[0]].config.load_config_defaults = 0
                 #    print('---- ISSURING A SOFTWARE RESET ----')
-                c[pair[0]].config.threshold_global += 1
+                c[pair[0]].config.threshold_global += 5
                 registers = [123, 64]
                 c.write_configuration(pair[0], registers)
                 c.write_configuration(pair[0], registers)

@@ -1,26 +1,23 @@
-
 #!/usr/bin/env python3
-
-import larpix_qc.base as base
 
 import time
 import argparse
 import json
+
 from copy import deepcopy
 from collections import Counter
-#from statistics import multimode
 
-_default_controller_config=None
-_default_chip_key=None
-_default_threshold=128
-_default_runtime=2
-_default_channels=range(64)
-_default_disabled_list=None
-_default_leakage_cut=10.
-_default_invalid_cut=0.1
-_default_no_refinement=False
+from larpix_qc import base
 
-
+_default_controller_config = None
+_default_chip_key = None
+_default_threshold = 128
+_default_runtime = 2
+_default_channels = range(64)
+_default_disabled_list = None
+_default_leakage_cut = 10.
+_default_invalid_cut = 0.1
+_default_no_refinement = False
 
 def run(c, runtime):
     print('run for',runtime,'sec')
@@ -28,8 +25,6 @@ def run(c, runtime):
     c.run(runtime,'collect data')
     c.logger.flush()
     c.logger.disable()
-
-
 
 def enable_chip(c, chip_key, channels, threshold, disabled_channels):
     chip_config_pairs=[]
@@ -61,7 +56,6 @@ def enable_chip(c, chip_key, channels, threshold, disabled_channels):
     base.flush_data(c)
     return True
 
-
 def disable_chip(c, chip_key, channels):
     c.io.double_send_packets = True
     c.io.group_packes_by_io_group = True
@@ -88,27 +82,21 @@ def disable_chip(c, chip_key, channels):
     c.logger.record_configs([c[chip_key]])
     return True
 
-
-
 def chip_key_to_string(chip_key):
     return str(chip_key.io_group)+'-'+str(chip_key.io_channel)+'-'+str(chip_key.chip_id)
 
-
-
 def save_simple_json(record, now):
-    with open('leakage-bad-channels-'+str(now)+'.json','w') as outfile: json.dump(record, outfile, indent=4)
-    return
-
-
+    with open('leakage-bad-channels-'+str(now)+'.json','w') as outfile:
+        json.dump(record, outfile, indent=4)
 
 def find_multimode(l):
-    out=[]; count_l = Counter(l)
+    out=[]
+    count_l = Counter(l)
     temp = count_l.most_common(1)[0][1]
     for a in l:
-        if l.count(a) == temp: out.append(a)
+        if l.count(a) == temp:
+            out.append(a)
     return list(set(out))
-
-
 
 def main(controller_config=_default_controller_config,
          chip_key=_default_chip_key,
@@ -157,7 +145,8 @@ def main(controller_config=_default_controller_config,
                 return
 
             flag_enable = enable_chip(c, chip_key, channels, threshold, bad_channel_list)
-            if flag_enable==False: flag_enable=enable_chip(c, chip_key, channels, threshold, bad_channel_list)
+            if not flag_enable:
+                flag_enable = enable_chip(c, chip_key, channels, threshold, bad_channel_list)
             run(c, runtime)
             attempts = 0
             flag_disable = False
@@ -176,32 +165,51 @@ def main(controller_config=_default_controller_config,
             print(chip_key,'\ttriggers:',all_packets,'\trate: {:0.2f}Hz (per channel: {:0.2f}Hz)\t invalid packet fraction: {:0.2f}'.format(avg_trig_rate, avg_chan_trig_rate,invalid_fraction))
             channel_to_disable=[]
             invalid_channel_to_disable = [] # THIS WASN'T DEFINED BEFORE, SO I ADDED IT HERE, MAYBE IT'S WRONG PLACE?
-
+            # print(c.reads[-1].extract('channel_id'))
+            triggered_channels = c.reads[-1].extract('channel_id')
+            mode_channel = find_multimode(triggered_channels)
+            print("channels",triggered_channels,mode_channel)
             if avg_chan_trig_rate>leakage_cut:
                 triggered_channels = c.reads[-1].extract('channel_id')
                 mode_channel = find_multimode(triggered_channels)
-                for mc in mode_channel: channel_to_disable.append(mc); print('leakage rate exceeded. disable channel ',mc)
-                n_bad_channels+=1; count_failed_channels+=1
+
+                for mc in mode_channel:
+                    channel_to_disable.append(mc)
+                    print('leakage rate exceeded. disable channel ', mc)
+
+                n_bad_channels+=1
+                count_failed_channels+=1
 
             if invalid_fraction>invalid_cut:
                 mode_channel = find_multimode(invalid_packets)
-                for mc in mode_channel: invalid_channel_to_disable.append(mc)
+
+                for mc in mode_channel:
+                    invalid_channel_to_disable.append(mc)
+
                 if avg_chan_trig_rate>leakage_cut:
                     for ctd in invalid_channel_to_disable:
                         if ctd not in channel_to_disable:
-                            channel_to_disable.append(ctd); print('invalid fraction exceeded. disable channel ',ctd)
-                            n_bad_channels+=1; count_failed_channels+=1
+                            channel_to_disable.append(ctd)
+                            print('invalid fraction exceeded. disable channel ', ctd)
+                            n_bad_channels+=1
+                            count_failed_channels+=1
 
             for mode_channel in channel_to_disable:
                 _chip_key_string_=chip_key_to_string(chip_key)
-                if _chip_key_string_ not in bad_channel_list: bad_channel_list[_chip_key_string_]=[]
+
+                if _chip_key_string_ not in bad_channel_list:
+                    bad_channel_list[_chip_key_string_]=[]
+
                 bad_channel_list[_chip_key_string_].append(mode_channel)
                 print('disabled channel ',mode_channel,' on ',chip_key)
-            if len(channel_to_disable)>0: c.io.reset_larpix(length=24); time.sleep(3)
+            if len(channel_to_disable)>0:
+                c.io.reset_larpix(length=24)
+                time.sleep(3)
+
     now = time.strftime("%Y_%m_%d_%H_%M_%S_%Z")
     save_simple_json(bad_channel_list, now)
 
-    if no_refinement==False:
+    if not no_refinement:
 
         leakage_fname="recursive_leakage_%s.h5" % now
         c = base.main(controller_config, logger=True, filename=leakage_fname)
@@ -209,7 +217,8 @@ def main(controller_config=_default_controller_config,
             time.sleep(0.5)
 
             flag_enable = enable_chip(c, chip_key, channels, threshold, bad_channel_list)
-            if flag_enable==False: flag_enable=enable_chip(c, chip_key, channels, threshold, bad_channel_list)
+            if not flag_enable:
+                flag_enable=enable_chip(c, chip_key, channels, threshold, bad_channel_list)
             run(c, runtime)
             flag_disable = disable_chip(c, chip_key, channels)
             if not flag_disable:

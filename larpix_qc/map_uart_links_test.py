@@ -1,11 +1,11 @@
-import os
-
+import sys
+import time
 import argparse
-from larpix_qc import graphs
-from larpix_qc import generate_config
+import graphs
 import larpix
 import larpix.io
 import larpix.logger
+import generate_config
 
 _uart_phase = 0
 
@@ -111,7 +111,7 @@ def get_good_roots(c, io_group, io_channels):
 		###############################################################################
 
 		#checking
-		ok,diff = c.verify_registers([(key,122)])
+		ok,diff = c.verify_registers([(key,122)], timeout=0.5, n=3)
 
 		if ok:
 			good_tile_channel_indices.append(n)
@@ -127,44 +127,66 @@ def get_good_roots(c, io_group, io_channels):
 
 	return good_roots, good_channels
 
-
-def reset_board_get_controller(io_group, io_channels):
+def reset_board_get_controller(io_group, io_channels, pacman_version=3):
 	#creating controller with pacman io
 	c = larpix.Controller()
 	c.io = larpix.io.PACMAN_IO(relaxed=True)
+	c.io.double_send_packets = True
 
-	vddd = 40605
-	c.io.set_reg(0x00024130, 46020) # write to tile 1 VDDA
-	c.io.set_reg(0x00024131, vddd) # write to tile 1 VDDD
-	c.io.set_reg(0x00024132, 46020) # write to tile 2 VDDA
-	c.io.set_reg(0x00024133, vddd) # write to tile 2 VDDD
-	c.io.set_reg(0x00024134, 46020) # write to tile 3 VDDA
-	c.io.set_reg(0x00024135, vddd) # write to tile 3 VDDD
-	c.io.set_reg(0x00024136, 46020) # write to tile 4 VDDA
-	c.io.set_reg(0x00024137, vddd) # write to tile 4 VDDD
-	c.io.set_reg(0x00024138, 46020) # write to tile 5 VDDA
-	c.io.set_reg(0x00024139, vddd) # write to tile 5 VDDD
-	c.io.set_reg(0x0002413a, 46020) # write to tile 6 VDDA
-	c.io.set_reg(0x0002413b, vddd) # write to tile 6 VDDD
-	c.io.set_reg(0x0002413c, 46020) # write to tile 7 VDDA
-	c.io.set_reg(0x0002413d, vddd) # write to tile 7 VDDD
-	c.io.set_reg(0x0002413e, 46020) # write to tile 8 VDDA
-	c.io.set_reg(0x0002413f, vddd) # write to tile 8 VDDD
-	c.io.set_reg(0x00000014, 1) # enable global larpix power
-	c.io.set_reg(0x00000010, 0b11111111) # enable tiles to be powered
+	if pacman_version == 3:
+		vddd = 40605
+		c.io.set_reg(0x00024130, 46020) # write to tile 1 VDDA
+		c.io.set_reg(0x00024131, vddd) # write to tile 1 VDDD
+		c.io.set_reg(0x00024132, 46020) # write to tile 2 VDDA
+		c.io.set_reg(0x00024133, vddd) # write to tile 2 VDDD
+		c.io.set_reg(0x00024134, 46020) # write to tile 3 VDDA
+		c.io.set_reg(0x00024135, vddd) # write to tile 3 VDDD
+		c.io.set_reg(0x00024136, 46020) # write to tile 4 VDDA
+		c.io.set_reg(0x00024137, vddd) # write to tile 4 VDDD
+		c.io.set_reg(0x00024138, 46020) # write to tile 5 VDDA
+		c.io.set_reg(0x00024139, vddd) # write to tile 5 VDDD
+		c.io.set_reg(0x0002413a, 46020) # write to tile 6 VDDA
+		c.io.set_reg(0x0002413b, vddd) # write to tile 6 VDDD
+		c.io.set_reg(0x0002413c, 46020) # write to tile 7 VDDA
+		c.io.set_reg(0x0002413d, vddd) # write to tile 7 VDDD
+		c.io.set_reg(0x0002413e, 46020) # write to tile 8 VDDA
+		c.io.set_reg(0x0002413f, vddd) # write to tile 8 VDDD
+		c.io.set_reg(0x00000014, 1) # enable global larpix power
+		c.io.set_reg(0x00000010, 0b11111111) # enable tiles to be powered
 
-	power = power_registers()
-	adc_read = 0x00024001
-	for i in power.keys():
-		val_vdda = c.io.get_reg(adc_read+power[i][0], io_group=1)
-		val_idda = c.io.get_reg(adc_read+power[i][1], io_group=1)
-		val_vddd = c.io.get_reg(adc_read+power[i][2], io_group=1)
-		val_iddd = c.io.get_reg(adc_read+power[i][3], io_group=1)
-		print('TILE',i,
-			  '\tVDDA:',(((val_vdda>>16)>>3)*4),
-			  '\tIDDA:',(((val_idda>>16)-(val_idda>>31)*65535)*500*0.01),
-			  '\tVDDD:',(((val_vddd>>16)>>3)*4),
-			  '\tIDDD:',(((val_iddd>>16)-(val_iddd>>31)*65535)*500*0.01))
+		power = power_registers()
+		adc_read = 0x00024001
+		for i in power.keys():
+			val_vdda = c.io.get_reg(adc_read+power[i][0], io_group=1)
+			val_idda = c.io.get_reg(adc_read+power[i][1], io_group=1)
+			val_vddd = c.io.get_reg(adc_read+power[i][2], io_group=1)
+			val_iddd = c.io.get_reg(adc_read+power[i][3], io_group=1)
+			print('TILE',i,
+				  '\tVDDA:',(((val_vdda>>16)>>3)*4),
+				  '\tIDDA:',(((val_idda>>16)-(val_idda>>31)*65535)*500*0.01),
+				  '\tVDDD:',(((val_vddd>>16)>>3)*4),
+				  '\tIDDD:',(((val_iddd>>16)-(val_iddd>>31)*65535)*500*0.01))
+
+	if pacman_version == 2:
+		_vddd_dac = 0xd2cd # for ~1.8V operation on single chip testboard
+		_vdda_dac = 0xd2cd # for ~1.8V operation on single chip testboard
+		#_vddd_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
+		#_vdda_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
+		_uart_phase = 0
+		print('Setting larpix power...')
+		mask = c.io.enable_tile()[1]
+		print('tile enabled?:',hex(mask))
+		c.io.set_vddd(_vddd_dac)[1]
+		c.io.set_vdda(_vdda_dac)[1]
+		vddd,iddd = c.io.get_vddd()[1]
+		vdda,idda = c.io.get_vdda()[1]
+		print('VDDD:',vddd,'mV')
+		print('IDDD:',iddd,'mA')
+		print('VDDA:',vdda,'mV')
+		print('IDDA:',idda,'mA')
+		for ch in range(1,5):
+			c.io.set_reg(0x1000*ch + 0x2014, _uart_phase)
+		print('set phase:',_uart_phase)
 
 	#adding pacman!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	for io_channel in io_channels:
@@ -208,7 +230,7 @@ def init_initial_network(c, io_group, io_channels, paths):
 				c.write_configuration(prev_key, 'enable_miso_downstream')
 				c.write_configuration(prev_key, 'enable_miso_differential')
 				ordered_chips_by_channel[ipath].append(prev_key.chip_id)
-
+			
 			c[prev_key].config.enable_miso_upstream = arr.get_uart_enable_list(prev_key.chip_id, next_key.chip_id)
 			c.write_configuration(prev_key, 'enable_miso_upstream')
 
@@ -224,7 +246,7 @@ def init_initial_network(c, io_group, io_channels, paths):
 			c[next_key].config.enable_miso_differential =[1,1,1,1]
 			c.write_configuration(next_key, 'enable_miso_downstream')
 			ordered_chips_by_channel[ipath].append(next_key.chip_id)
-
+			
 		for chip_ids in ordered_chips_by_channel[ipath][::-1]:
 			key = larpix.key.Key(io_group, io_channels[ipath], chip_ids)
 			c[key].config.enable_miso_downstream=[0]*4
@@ -246,7 +268,7 @@ def test_network(c, io_group, io_channels, paths):
 		step += 1
 
 		for ipath, path in enumerate(paths):
-
+			
 			if not still_stepping[ipath] or not valid[ipath]:
 				continue
 
@@ -276,7 +298,7 @@ def test_network(c, io_group, io_channels, paths):
 				print(next_key, 'already verified')
 				continue
 
-			ok, diff = c.verify_registers([(next_key, 122)])
+			ok, diff = c.verify_registers([(next_key, 122)], timeout=0.5, n=3)
 			print(next_key, ok )
 
 			if ok:
@@ -295,12 +317,12 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 	#-loop over directions
 	#-check if chip in that direction is in current network
 	#---if in network:
-	# 	shut off all current misos through existing network,
+	# 	shut off all current misos through existing network, 
 	#   re-route through current chip using upstrean command from current chip
 	#   read configuration through current chip
 	# ** if we can't read the command, then either the upstream from current chip isn't working, or the
 	# ** mosi on the current chip isn't working, or the downstream miso on next/current mosi bridge isnt working
-	#
+	# 
 	# to test:
 	# - upstream on current or downstream on next:
 	#----change register through current configuration
@@ -310,16 +332,16 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 	#----true: upstream miso works, downstream no
 	#----false: upstream miso on current doesn't work
 	#----***IF upstream miso doesn't work, we need an additional test
-	#       to make sure that the downstream miso on next works
-	#    ** test:
-	#       -disable miso downstream from previous path
-	#       -enable downstream miso from next to current
-	#    	-disbale miso us from current (for good measure, we know it doesnt work)
+	#	   to make sure that the downstream miso on next works
+	#	** test:
+	#	   -disable miso downstream from previous path
+	#	   -enable downstream miso from next to current
+	#		-disbale miso us from current (for good measure, we know it doesnt work)
 	#		-read register from chip
-
+	
 	chip = path[ich]
 	#check if last chip in path
-
+	
 	mover_directions = [arr.right, arr.left, arr.up, arr.down]
 
 	for direction in mover_directions:
@@ -332,10 +354,11 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 		if next_chip == path[ich-1]:
 			continue
 
-		if (next_chip, chip) in arr.good_connections: #
+		if (chip, next_chip) in arr.good_connections: #
 			continue
 
 		real_io_channel = -1
+
 		if not(next_chip in path):
 			key = larpix.key.Key(io_group, io_channel, next_chip)
 
@@ -343,20 +366,20 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 				if next_chip in _path:
 					real_io_channel = io_channels_copy[_ipath]
 					break
-			if real_io_channel < 0:
-				continue
+			if real_io_channel > 0:
 
-			real_key = larpix.key.Key(io_group, real_io_channel, next_chip)
-			try:
-				c.add_chip(key)
-			except:
-				c.remove_chip(key)
-				c.add_chip(key)
+				real_key = larpix.key.Key(io_group, real_io_channel, next_chip)
+				try:
+					c.add_chip(key)
+				except:
+					c.remove_chip(key)
+					c.add_chip(key)
 
-			c[key].config = c[real_key].config
+				c[key].config = c[real_key].config
 		else:
 			next_index = path.index(next_chip)
 			if next_index < ich:
+				print('not testing,', chip, next_chip)
 				continue
 			if next_index == 0:
 				#next chip is root chip!
@@ -383,13 +406,13 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 			prev_us_backup = c[prev_key].config.enable_miso_upstream.copy()
 			c[prev_key].config.enable_miso_upstream = [0,0,0,0]
 			c.write_configuration(prev_key, 'enable_miso_upstream')
-
+			
 		#at this point the next chip is completely cut off. Now we talk to it through our current chip
 		curr_us_backup = c[curr_key].config.enable_miso_upstream.copy()
 		c[curr_key].config.enable_miso_upstream = arr.get_uart_enable_list(chip, next_chip)
 		c.write_configuration(curr_key, 'enable_miso_upstream')
 
-
+		
 		#if real io > 0, next key is not in network, so we need to make new key in network
 		new_next_key = next_key
 		if real_io_channel > 0:
@@ -397,9 +420,9 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 
 		c[new_next_key].config.enable_miso_downstream = arr.get_uart_enable_list(next_chip, chip)
 		c.write_configuration(new_next_key, 'enable_miso_downstream')
-
+		
 		#check if we can communicate with it
-		ok, diff = c.verify_registers([(new_next_key, 122)]) #just reading chip id
+		ok, diff = c.verify_registers([(new_next_key, 122)], timeout=0.5, n=3) #just reading chip id
 		if True:
 			if ok:
 				print('successfully tested uart', chip, next_chip)
@@ -421,9 +444,9 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 				c.write_configuration(next_key, 'enable_miso_downstream')
 
 				#test configs
-				ok, diff = c.verify_registers([(next_key, 122), (curr_key, 122)])
+				ok, diff = c.verify_registers([(next_key, 122), (curr_key, 122)], timeout=0.5, n=3)
 				if real_io_channel < 0:
-					ok2, diff2 = c.verify_registers([(prev_key, 122)])
+					ok2, diff2 = c.verify_registers([(prev_key, 122)], timeout=0.5, n=3)
 					ok = (ok and ok2)
 
 				if ok:
@@ -439,9 +462,9 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 					c[next_key].config.enable_miso_downstream = next_ds_backup
 					c.write_configuration(next_key, 'enable_miso_downstream')
 
-					ok, diff = c.verify_registers([(next_key, 122), (curr_key, 122)])
+					ok, diff = c.verify_registers([(next_key, 122), (curr_key, 122)], timeout=0.5, n=3)
 					if real_io_channel < 0:
-						ok2, diff2 = c.verify_registers([(prev_key, 122)])
+						ok2, diff2 = c.verify_registers([(prev_key, 122)], timeout=0.5, n=3)
 						ok = (ok and ok2)
 
 					if ok:
@@ -459,27 +482,27 @@ def test_chip(c, io_group, io_channel, path, ich, all_paths_copy, io_channels_co
 							c.write_configuration(prev_key, 'enable_miso_upstream')
 
 
-						ok, diff = c.verify_registers([(next_key, 122), (curr_key, 122)])
+						ok, diff = c.verify_registers([(next_key, 122), (curr_key, 122)], timeout=0.5, n=3)
 
 						if real_io_channel < 0:
-							ok2, diff2 = c.verify_registers([(prev_key, 122)])
+							ok2, diff2 = c.verify_registers([(prev_key, 122)], timeout=0.5, n=3)
 							ok = (ok and ok2)
 
 						continue
 	return True
+	
 
 
-
-def main(tile_number, generate_configuration):
-
+def main(tile_number, generate_configuration, tile_id, pacman_version):
+	tile_name = 'id_' + tile_id 
 	io_group = 1
 	io_channels = [ 1 + 4*(tile_number - 1) + n for n in range(4)]
-
-	c = reset_board_get_controller(io_group, io_channels)
+	#io_channels = [1, 2, 4]
+	c = reset_board_get_controller(io_group, io_channels, pacman_version)
 
 	root_chips, io_channels = get_good_roots(c, io_group, io_channels)
 	print(root_chips)
-	c = reset_board_get_controller(io_group, io_channels)
+	c = reset_board_get_controller(io_group, io_channels, pacman_version)
 
 	#need to init whole network first and write clock frequency, then we can step through and test
 
@@ -495,7 +518,7 @@ def main(tile_number, generate_configuration):
 	ok = test_network(c, io_group, io_channels, paths)
 
 	while not ok:
-		c = reset_board_get_controller(io_group, io_channels)
+		c = reset_board_get_controller(io_group, io_channels, pacman_version)
 
 		existing_paths = [ [chip] for chip in root_chips  ]
 
@@ -534,11 +557,12 @@ def main(tile_number, generate_configuration):
 
 	print('untested', chips_to_test)
 	print('bad (one-way) links: ', arr.excluded_links)
+	print('tested', len(arr.good_connections) + len(arr.excluded_links), 'uarts')
 
 	######
 	##generating config file
 	paths = arr.get_path(existing_paths)
-	_name = 'tile-' + str(tile_number)
+	_name = 'tile-' + tile_name + "-autoconfig"
 	if generate_configuration:
 		print('writing configuration', _name + '.json, including', sum(  [len(path) for path in paths] ), 'chips'  )
 		generate_config.main(_name, io_group, root_chips, io_channels, arr.excluded_links, arr.excluded_chips)
@@ -546,20 +570,10 @@ def main(tile_number, generate_configuration):
 	return
 
 if __name__ == '__main__':
-
-	if not os.path.exists("io/pacman.json"):
-		if not os.path.exists("io"):
-			os.makedirs("io")
-		pacman_address = input("io/pacman.json not found. Enter pacman address (e.g. pacman.local): ")
-		print("""{
-    "_config_type": "io",
-    "io_class": "PACMAN_IO",
-    "io_group": [
-        [1, "%s"]
-    ]
-}""" % pacman_address, file=open("io/pacman.json", "w"))
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--tile_number', default=1, type=int, help='''Tile number being tested''')
+	parser.add_argument('--pacman_version', default=3, type=int, help='''Pacman version in use''')
+	parser.add_argument('--tile_id', default='1', type=str, help='''Tile number being tested''')
 	parser.add_argument('--generate_configuration', default=True, type=bool, help='''Flag to write configuration file with name tile-(tile number).json''')
 	args = parser.parse_args()
 	c = main(**vars(args))

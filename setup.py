@@ -23,6 +23,7 @@ setuptools.setup(
     ],
     scripts=['larpix_qc/pedestal_qc.py','larpix_qc/leakage_qc.py','larpix_qc/selftrigger_qc.py',
              'larpix_qc/threshold_qc.py','larpix_qc/map_uart_links_test.py',
-             'larpix_qc/plot_leakage.py', 'larpix_qc/plot_pedestal.py', 'larpix_qc/base.py'],
+             'larpix_qc/plot_leakage.py', 'larpix_qc/plot_pedestal.py', 'larpix_qc/base.py',
+             'larpix_qc/plot_selftrigger.py', 'larpix_qc/generate_report.py'],
     python_requires='>=3.6',
 )

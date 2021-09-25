@@ -168,10 +168,10 @@ def reset_board_get_controller(io_group, io_channels, pacman_version=3):
 				  '\tIDDD:',(((val_iddd>>16)-(val_iddd>>31)*65535)*500*0.01))
 
 	if pacman_version == 2:
-		_vddd_dac = 0xd2cd # for ~1.8V operation on single chip testboard
-		_vdda_dac = 0xd2cd # for ~1.8V operation on single chip testboard
-		#_vddd_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
-		#_vdda_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
+		#_vddd_dac = 0xd2cd # for ~1.8V operation on single chip testboard
+		#_vdda_dac = 0xd2cd # for ~1.8V operation on single chip testboard
+		_vddd_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
+		_vdda_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
 		_uart_phase = 0
 		print('Setting larpix power...')
 		mask = c.io.enable_tile()[1]

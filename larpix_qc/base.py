@@ -56,40 +56,27 @@ def main(controller_config=_default_controller_config, logger=_default_logger, r
     c = larpix.Controller()
     c.io = larpix.io.PACMAN_IO(relaxed=True)
     print('testing',controller_config)
-    vddd = 40605 #42635
-    c.io.set_reg(0x00024130, 46020) # write to tile 1 VDDA
-    c.io.set_reg(0x00024131, vddd) # write to tile 1 VDDD
-    c.io.set_reg(0x00024132, 46020) # write to tile 2 VDDA
-    c.io.set_reg(0x00024133, vddd) # write to tile 2 VDDD
-    c.io.set_reg(0x00024134, 46020) # write to tile 3 VDDA
-    c.io.set_reg(0x00024135, vddd) # write to tile 3 VDDD
-    c.io.set_reg(0x00024136, 46020) # write to tile 4 VDDA
-    c.io.set_reg(0x00024137, vddd) # write to tile 4 VDDD
-    c.io.set_reg(0x00024138, 46020) # write to tile 5 VDDA
-    c.io.set_reg(0x00024139, vddd) # write to tile 5 VDDD
-    c.io.set_reg(0x0002413a, 46020) # write to tile 6 VDDA
-    c.io.set_reg(0x0002413b, vddd) # write to tile 6 VDDD
-    c.io.set_reg(0x0002413c, 46020) # write to tile 7 VDDA
-    c.io.set_reg(0x0002413d, vddd) # write to tile 7 VDDD
-    c.io.set_reg(0x0002413e, 46020) # write to tile 8 VDDA
-    c.io.set_reg(0x0002413f, vddd) # write to tile 8 VDDD
-    c.io.set_reg(0x00000014, 1) # enable global larpix power
-    c.io.set_reg(0x00000010, 0b00000001) # enable tiles to be powered
 
-    power = power_registers()
-    adc_read = 0x00024001
-    for i in power.keys():
-        print(i)
-        val_vdda = c.io.get_reg(adc_read+power[i][0], io_group=1)
-        val_idda = c.io.get_reg(adc_read+power[i][1], io_group=1)
-        val_vddd = c.io.get_reg(adc_read+power[i][2], io_group=1)
-        val_iddd = c.io.get_reg(adc_read+power[i][3], io_group=1)
-        print('TILE',i,
-              '\tVDDA:',(((val_vdda>>16)>>3)*4),
-              '\tIDDA:',(((val_idda>>16)-(val_idda>>31)*65535)*500*0.01),
-              '\tVDDD:',(((val_vddd>>16)>>3)*4),
-              '\tIDDD:',(((val_iddd>>16)-(val_iddd>>31)*65535)*500*0.01),
-              )
+    #_vddd_dac = 0xd2cd # for ~1.8V operation on single chip testboard
+    #_vdda_dac = 0xd2cd # for ~1.8V operation on single chip testboard
+    _vddd_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
+    _vdda_dac = 0xd8e4 # for ~1.8V operation on 10x10 tile
+    _uart_phase = 0
+    print('Setting larpix power...')
+    mask = c.io.enable_tile()[1]
+    print('tile enabled?:',hex(mask))
+    c.io.set_vddd(_vddd_dac)[1]
+    c.io.set_vdda(_vdda_dac)[1]
+    vddd,iddd = c.io.get_vddd()[1]
+    vdda,idda = c.io.get_vdda()[1]
+    print('VDDD:',vddd,'mV')
+    print('IDDD:',iddd,'mA')
+    print('VDDA:',vdda,'mV')
+    print('IDDA:',idda,'mA')
+    for ch in range(1,5):
+        c.io.set_reg(0x1000*ch + 0x2014, _uart_phase)
+    print('set phase:',_uart_phase)
+   
 
     if logger:
         print('logger')

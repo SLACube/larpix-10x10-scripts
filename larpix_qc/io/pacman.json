@@ -2,6 +2,6 @@
     "_config_type": "io",
     "io_class": "PACMAN_IO",
     "io_group": [
-        [1, "10.11.10.10"]
+        [1, "pacman15.local"]
     ]
 }

@@ -180,11 +180,11 @@ def main(controller_config=_default_controller_config, pacman_version=_default_p
     chip_register_pairs = c.differential_write_configuration(chip_config_pairs, write_read=0, connection_delay=0.01)
     flush_data(c)
 
-    for chip_key in c.chips:
-        chip_registers = [(chip_key, i) for i in [82,83,125,129]]
-        ok,diff = c.enforce_registers(chip_registers, timeout=0.01, n=10, n_verify=10)
-        if not ok:
-            raise RuntimeError(diff,'\nconfig error on chips',list(diff.keys()))
+    #for chip_key in c.chips:
+    #    chip_registers = [(chip_key, i) for i in [82,83,125,129]]
+    #    ok,diff = c.enforce_registers(chip_registers, timeout=0.01, n=10, n_verify=10)
+    #    if not ok:
+    #        raise RuntimeError(diff,'\nconfig error on chips',list(diff.keys()))
     c.io.double_send_packets = False
     c.io.gruop_packets_by_io_group = False
     print('base configuration successfully enforced')

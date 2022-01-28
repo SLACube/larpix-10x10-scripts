@@ -134,7 +134,8 @@ def reset_board_get_controller(io_group, io_channels, pacman_version=3):
 	c.io.double_send_packets = True
 
 	if pacman_version == 3:
-		vddd = 40605
+		#vddd = 40605
+		vddd = 43000
 		c.io.set_reg(0x00024130, 46020) # write to tile 1 VDDA
 		c.io.set_reg(0x00024131, vddd) # write to tile 1 VDDD
 		c.io.set_reg(0x00024132, 46020) # write to tile 2 VDDA
@@ -543,6 +544,7 @@ def main(tile_number, generate_configuration, tile_id, pacman_version):
 	##
 	##
 
+	print(paths)
 	for ipath, path in enumerate(paths):
 		for ich in range(len(path)):
 			ok = test_chip(c, io_group, io_channels[ipath], path, ich, paths.copy(), io_channels.copy())

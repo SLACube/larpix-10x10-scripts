@@ -62,7 +62,11 @@ def main(config_name=_default_config_name, controller_config=_default_controller
     while True:
         counter = 0; last_count = 0
         c.io.enable_raw_file_writing = True
-        c.io.raw_filename = time.strftime(c.io.default_raw_filename_fmt)
+        #c.io.raw_filename = time.strftime(c.io.default_raw_filename_fmt)
+        c.io.raw_filename = os.path.join(
+            outdir,
+            time.strftime(c.io.default_raw_filename_fmt)
+        )
         c.io.join()
         rhdf5.to_rawfile(filename=c.io.raw_filename, io_version=pacman_msg_fmt.latest_version)
         print('new run file at ',c.io.raw_filename)

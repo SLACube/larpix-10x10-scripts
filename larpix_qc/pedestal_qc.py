@@ -31,6 +31,14 @@ _default_noise_cut_value=3.
 _default_apply_noise_cut=False
 _default_no_refinement=False
 
+def merge_bad_channels(dict1, dict2, inplace=True):
+    merged = dict1 if inplace else deepcopy(dict1)
+    for key, list2 in dict2.items():
+        list1= dict1.get(key, [])
+        list1 += list2
+        dict1[key] = np.unique(list1).tolist()
+    return merged
+
 def configure_pedestal(c, periodic_trigger_cycles, disabled_channels):
     c.io.group_packets_by_io_group = True
     c.io.double_send_packets = True
@@ -219,6 +227,7 @@ def main(controller_config=_default_controller_config,
     #if no_log_simple==False or log_qc:
     if no_log_simple==False:
         revised_disabled_channels, n_bad_channels = evaluate_pedestal(ped_fname, baseline_cut_value, no_apply_baseline_cut, noise_cut_value, apply_noise_cut)
+        merge_bad_channels(revised_disabled_channels, disabled_channels, inplace=True)
         revised_bad_channel_filename=save_simple_json(revised_disabled_channels)
         print('\n\n\n===========\t',n_bad_channels,' bad channels\t ===========\n\n\n')
 

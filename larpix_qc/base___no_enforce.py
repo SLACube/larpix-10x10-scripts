@@ -62,7 +62,8 @@ def main(controller_config=_default_controller_config, pacman_version=_default_p
     ###### set power to tile    
     if pacman_version=='v1rev3':
         vddd = 43000 #40605
-        vdda = 46020
+        #vdda = 46020
+        vdda = 44000
         c.io.set_reg(0x00024130, vdda) # tile 1 VDDA
         c.io.set_reg(0x00024131, vddd) # tile 1 VDDD
         c.io.set_reg(0x00024132, vdda) # tile 2 VDDA

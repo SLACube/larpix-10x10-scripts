@@ -11,6 +11,7 @@ import larpix.io
 import larpix.logger
 from larpix_qc import base
 
+import os
 import argparse
 import json
 import time
@@ -186,7 +187,8 @@ def main(controller_config=_default_controller_config,
          no_apply_baseline_cut=_default_no_apply_baseline_cut,
          noise_cut_value=_default_noise_cut_value,
          apply_noise_cut=_default_apply_noise_cut,
-         no_refinement=_default_no_refinement):
+         no_refinement=_default_no_refinement,
+         outdir='./'):
 
     if no_refinement==False:
         if no_log_simple==False and no_apply_baseline_cut==True and apply_noise_cut==False:
@@ -208,13 +210,15 @@ def main(controller_config=_default_controller_config,
     if disabled_list:
         print('applying disabled list: ',disabled_list)
         with open(disabled_list,'r') as f: disabled_channels = json.load(f)
-        ped_fname=ped_fname+"____"+str(disabled_list.split(".json")[0])
+        suffix = os.path.splitext(os.path.basename(disabled_list))[0]
+        ped_fname = f'{ped_fname}____{suffix}'
     else:
         nonrouted_channels=[6,7,8,9,22,23,24,25,38,39,40,54,55,56,57] # channels NOT routed out to pixel pads for LArPix-v2
         disabled_channels["All"]=nonrouted_channels
         print('No disabled list applied. Using the default bad channels list.')
         ped_fname=ped_fname+"____default_bad_channels"
-    ped_fname= ped_fname+".h5"
+
+    ped_fname = os.path.join(outdir, ped_fname+'.h5')
 
     c = base.main(controller_config=controller_config, logger=True, filename=ped_fname)
     configure_pedestal(c, periodic_trigger_cycles, disabled_channels)
@@ -259,7 +263,7 @@ if __name__ == '__main__':
     parser.add_argument('--noise_cut_value', default=_default_noise_cut_value, type=float, help='''Pedestal noise standard deviation cut value: channels with pedestal standard deviation at or exceeding this value are added to disabled list''')
     parser.add_argument('--apply_noise_cut', default=_default_apply_noise_cut, action='store_true', help='''If flag present, pedestal standard deviation cut value applied''')
     parser.add_argument('--no_refinement', default=_default_no_refinement, action='store_true', help='''If flag present, pedestal is not run recursively to measure pedestal with bad channels removed''')
+    parser.add_argument('--outdir', default='./', help='Output directory')
 
     args = parser.parse_args()
     c = main(**vars(args))
-

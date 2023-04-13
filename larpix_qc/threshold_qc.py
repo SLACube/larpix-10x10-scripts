@@ -1,22 +1,22 @@
-#!/usr/bin/env python3
-
 import larpix
 import larpix.io
 import larpix.logger
 
 from larpix_qc import base
+import os
 import h5py
 import argparse
 import time
 import numpy as np
 import json
+from collections import Counter
 
 _default_controller_config=None
 _default_pedestal_file=None
 _default_trim_sigma_file='channel_scale_factor.json'
 _default_disabled_list=None
 _default_noise_cut=3.
-_default_null_sample_time=0.5 #1 #0.25
+_default_null_sample_time= 1. #0.5 #1 #0.25
 _default_disable_rate=20.
 _default_set_rate=2.
 _default_cryo=False
@@ -174,6 +174,7 @@ def disable_from_file(c, disabled_list, csa_disable):
         print('applying disabled list: ',disabled_list)
         with open(disabled_list,'r') as f: disable_input=json.load(f)
     else:
+        print('No disabled list provided. Default disabled list applied.')
         disable_input["All"]=[6,7,8,9,22,23,24,25,38,39,40,54,55,56,57] # channels NOT routed out to pixel pads for LArPix-v2
 
     chip_register_pairs = []
@@ -195,6 +196,10 @@ def from_ADC_to_mV(c, chip_key, adc, flag, vdda):
     if flag==True: return adc * ( (vref - vcm) / 256. ) + vcm
     else: return adc * ( (vref - vcm) / 256. )
 
+def find_mode(l):
+    a = Counter(l)
+    return a.most_common(1)
+    
 def enable_frontend(c, channels, csa_disable, ):
     chip_register_pairs = []
     #for chip in c.chips:
@@ -220,11 +225,15 @@ def enable_frontend(c, channels, csa_disable, ):
         runtime = 0.5 #1
         while high_rate:
             c.run(runtime,'check rate')
-            chip_triggers = c.reads[-1].extract('chip_id',chip_key=pair[0],packet_type=0)
+            chip_triggers = c.reads[-1].extract('chip_id',chip_key=pair[0])
+            channel_triggers = c.reads[-1].extract('channel_id',chip_key=pair[0])
+            #chip_triggers = c.reads[-1].extract('chip_id',chip_key=pair[0],packet_type=0)
+            
             fifo_half = c.reads[-1].extract('shared_fifo_half',packet_type=0)
             fifo_full = c.reads[-1].extract('shared_fifo_full',packet_type=0)
             print('\t\tfifo half full {} fifo full {}'.format(sum(fifo_half), sum(fifo_full)))
             print('total packets {}\t{} {}'.format(len(c.reads[-1]),pair[0],len(chip_triggers)))
+            print('offending channel, triggers: {}'.format(find_mode(channel_triggers)))
             if len(chip_triggers)/runtime > 2000:
                 #print('\t\thigh rate channels! issue soft reset and raise global threshold {}'.format(
                 print('\t\thigh rate channels! raise global threshold {}'.format(
@@ -236,7 +245,7 @@ def enable_frontend(c, channels, csa_disable, ):
                 #    c.write_configuration(pair[0], 'load_config_defaults')
                 #    c[pair[0]].config.load_config_defaults = 0
                 #    print('---- ISSURING A SOFTWARE RESET ----')
-                c[pair[0]].config.threshold_global += 5
+                c[pair[0]].config.threshold_global += 1
                 registers = [123, 64]
                 c.write_configuration(pair[0], registers)
                 c.write_configuration(pair[0], registers)

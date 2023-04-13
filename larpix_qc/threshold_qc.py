@@ -514,7 +514,10 @@ def toggle_trim(c, channels, csa_disable, extreme_edge_chip_keys,
 
     return csa_disable
 
-def save_config_to_file(c, chip_keys, csa_disable, verbose):
+def save_config_to_file(c, chip_keys, csa_disable, verbose, outdir='./'):
+    if not os.path.isdir(outdir): 
+        os.makedirs(outdir)
+
     chip_register_pairs = []
     for chip_key in chip_keys:
         c[chip_key].config.csa_enable = [1]*64
@@ -528,7 +531,8 @@ def save_config_to_file(c, chip_keys, csa_disable, verbose):
     for chip_key in chip_keys:
         time_format = time.strftime('%Y_%m_%d_%H_%S_%Z')
         config_filename = 'config-'+str(chip_key)+'-'+time_format+'.json'
-        c[chip_key].config.write(config_filename, force=True)
+        fpath = os.path.join(outdir, config_filename)
+        c[chip_key].config.write(fpath, force=True)
         if verbose: print('\t',chip_key,'saved to',config_filename)
     return
 
@@ -549,6 +553,7 @@ def main(controller_config=_default_controller_config,
          vdda=_default_vdda,
          normalization=_default_normalization,
          verbose=_default_verbose,
+         outdir='./',
          **kwargs):
 
     time_initial = time.time()
@@ -637,7 +642,7 @@ def main(controller_config=_default_controller_config,
     print('==> %.3f seconds --- toggle trim DACs'%timeEnd)
 
     timeStart = time.time()
-    save_config_to_file(c, chip_keys, csa_disable, verbose)
+    save_config_to_file(c, chip_keys, csa_disable, verbose, outdir)
     timeEnd = time.time()-timeStart
     print('==> %.3f seconds --- saving to json config file \n'%timeEnd)
 
@@ -693,6 +698,10 @@ if __name__ == '__main__':
                         default=_default_verbose,
                         action='store_true',
                         help='''Print to screen debugging output''')
+    parser.add_argument('--outdir',
+                        default='./',
+                        help='Output directory'
+                        )
     args = parser.parse_args()
     c = main(**vars(args))
 

@@ -170,6 +170,7 @@ def main(
         max_score=None, 
         limit=None
 ):
+    input('STOP the external trigger and press ENTER to continue ...')
 
     # load disabled channel list
     if disabled_list is None:
@@ -196,6 +197,9 @@ def main(
 
 
     print('Wait 3 seconds for cooling the ASICs...'); time.sleep(3)
+
+    input('START the external trigger and press ENTER to continue ...')
+
     if save_raw:
         save_raw_format(c, runtime)
     else:

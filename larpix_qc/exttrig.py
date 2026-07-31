@@ -88,7 +88,7 @@ def enable_channel(chip_key, disabled_channel_map):
     enable = np.full(64, True)
     idx = np.unique(
         disabled_channel_map.get('All', []) \
-        + disabled_channel_map.get('chip_key', [])
+        + disabled_channel_map.get(chip_key, [])
     )
 
     if len(idx) == 0:
@@ -207,8 +207,10 @@ def main(
 
     print('END EXT TRIG RUN')
 
+    base.flush_data(c)
+
     print('soft reset')
-    c.io.reset_larpix(length=24)
-   
+    c.io.reset_larpix(length=10240)
+
 if __name__ == '__main__':
     fire.Fire(main)
